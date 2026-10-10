@@ -1570,6 +1570,16 @@ try { window.__DNTM_PREBOOT_SAVE = { main: localStorage.getItem('tacticalArenaRe
 
 </head>
 <body>
+<div id="dntm-login-gate" class="dntm-login-gate" role="main" aria-label="Đăng nhập Đệ Nhất Tông Môn">
+ <section class="dntm-login-gate-card">
+  <div class="dntm-login-gate-emblem"><i class="fa-solid fa-fire-flame-curved"></i></div>
+  <h1>ĐỆ NHẤT TÔNG MÔN</h1>
+  <p class="dntm-login-gate-sub">ONLINE · Hành trình tu tiên của bạn được gắn với tài khoản riêng.</p>
+  <p class="dntm-login-gate-note" id="dntm-login-gate-status">Vui lòng đăng nhập hoặc tạo tài khoản. Game sẽ tải và kiểm tra tiến trình online trước khi vào Tông Môn.</p>
+  <button type="button" class="dntm-login-gate-btn" onclick="DNTMCloud.openModal();DNTMCloud.setMode('login')">Đăng nhập</button>
+  <button type="button" class="dntm-login-gate-btn secondary" onclick="DNTMCloud.openModal();DNTMCloud.setMode('signup')">Tạo tài khoản mới</button>
+ </section>
+</div>
 <div class="app-shell" id="app-shell">
 <header class="app-header">
   <div class="header-title-row">
@@ -10464,6 +10474,17 @@ div[id^="game-alert-"],div[id^="game-confirm-"]{z-index:100000 !important;}
 .u-modal-close:hover{color:#fbbf24;border-color:rgba(251,191,36,.55)}
 </style>
 
+<style id="dntm-login-gate-styles">
+.dntm-login-gate{position:fixed;inset:0;z-index:10040;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at 50% 20%,rgba(120,53,15,.24),transparent 48%),linear-gradient(160deg,#020617,#0b1220 58%,#111827);color:#e2e8f0}
+.dntm-login-gate[hidden]{display:none!important}
+.dntm-login-gate-card{width:min(100%,430px);padding:26px 22px;border:1px solid rgba(251,191,36,.34);border-radius:22px;background:linear-gradient(155deg,rgba(17,24,39,.98),rgba(8,13,24,.98));box-shadow:0 25px 80px #0009;text-align:center}
+.dntm-login-gate-emblem{width:62px;height:62px;margin:0 auto 14px;display:grid;place-items:center;border:1px solid #a16207;border-radius:18px;background:linear-gradient(145deg,#422006,#111827);color:#fbbf24;font-size:27px;box-shadow:0 0 30px #f59e0b18}
+.dntm-login-gate h1{margin:0;color:#fbbf24;font-size:clamp(21px,5vw,27px);font-weight:950;letter-spacing:.04em}
+.dntm-login-gate-sub{margin:9px 0 20px;color:#94a3b8;font-size:12px;line-height:1.7}
+.dntm-login-gate-note{margin:0 0 16px;padding:11px;border:1px solid #334155;border-radius:10px;background:#020617;color:#cbd5e1;font-size:11px;line-height:1.6}
+.dntm-login-gate-btn{width:100%;min-height:44px;margin-top:9px;padding:11px 14px;border:1px solid #f59e0b;border-radius:11px;background:linear-gradient(135deg,#fbbf24,#b45309);color:#1c1917;font-size:13px;font-weight:900;cursor:pointer}
+.dntm-login-gate-btn.secondary{border-color:#475569;background:#172033;color:#e2e8f0}
+</style>
 <style id="dntm-cloud-auth-styles">
 .dntm-account-open{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:7px 11px;border:1px solid rgba(251,191,36,.45);border-radius:10px;background:linear-gradient(135deg,#422006,#1e293b);color:#fde68a;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
 .dntm-account-open:hover{border-color:#fbbf24;filter:brightness(1.12)}
@@ -10509,7 +10530,7 @@ div[id^="game-alert-"],div[id^="game-confirm-"]{z-index:100000 !important;}
  const TABLE='player_saves';
  const SAVE_KEY='tacticalArenaRecruitmentV1';
  const BACKUP_KEY='tacticalArenaRecruitmentV1_backup';
- let client=null, session=null, mode='login', syncReady=false, syncTimer=null, syncBusy=false, lastSyncedAt=0, authInitialized=false, reconciling=false;
+ let client=null, session=null, mode='login', syncReady=false, syncTimer=null, syncBusy=false, lastSyncedAt=0, authInitialized=false, reconciling=false, gameUnlocked=false;
  const $=id=>document.getElementById(id);
  function setMessage(text,type){const el=$('dntm-cloud-message');if(el){el.textContent=text;el.className='dntm-cloud-message'+(type?' '+type:'');}}
  function setSignedMessage(text,type){const el=$('dntm-cloud-signed-message');if(el){el.textContent=text;el.className='dntm-cloud-message'+(type?' '+type:'');}}
@@ -10522,8 +10543,11 @@ div[id^="game-alert-"],div[id^="game-confirm-"]{z-index:100000 !important;}
  function compareSave(a,b){const at=timeOf(a),bt=timeOf(b);if(at!==bt)return at-bt;return (Number(a?.saveRevision)||0)-(Number(b?.saveRevision)||0);}
  function showSyncStatus(text){const el=$('dntm-cloud-sync-status');if(el)el.textContent=text;}
  function setAccountButton(){const label=$('dntm-account-label');if(label)label.textContent=session?(session.user?.user_metadata?.display_name||session.user?.email?.split('@')[0]||'Đã đăng nhập'):'Tài khoản';}
+ function setGateStatus(text){const el=$('dntm-login-gate-status');if(el)el.textContent=text;}
+ function unlockGame(){gameUnlocked=true;const gate=$('dntm-login-gate');if(gate)gate.hidden=true;closeModal();}
+ function lockGame(text){gameUnlocked=false;const gate=$('dntm-login-gate');if(gate)gate.hidden=false;if(text)setGateStatus(text);}
  function openModal(){const b=$('dntm-cloud-backdrop');if(b)b.classList.add('open');}
- function closeModal(){const b=$('dntm-cloud-backdrop');if(b)b.classList.remove('open');}
+ function closeModal(){if(!gameUnlocked)return;const b=$('dntm-cloud-backdrop');if(b)b.classList.remove('open');}
  function setMode(next){mode=next==='signup'?'signup':'login';$('dntm-cloud-tab-login')?.classList.toggle('active',mode==='login');$('dntm-cloud-tab-signup')?.classList.toggle('active',mode==='signup');$('dntm-cloud-displayname-wrap').hidden=mode!=='signup';$('dntm-cloud-password').autocomplete=mode==='signup'?'new-password':'current-password';$('dntm-cloud-submit').textContent=mode==='signup'?'Tạo tài khoản':'Đăng nhập';setMessage(mode==='signup'?'Nhập email, mật khẩu và tên hiển thị. Nếu xác nhận email được bật, hãy mở email để xác nhận trước khi đăng nhập.':'Đăng nhập để đồng bộ tiến trình game của bạn.');}
  function toggleSignedIn(isSigned){$('dntm-cloud-auth-view').hidden=!!isSigned;$('dntm-cloud-signed-view').hidden=!isSigned;setAccountButton();}
  async function submitPassword(){
@@ -10583,19 +10607,21 @@ div[id^="game-alert-"],div[id^="game-confirm-"]{z-index:100000 !important;}
    }
    syncReady=true;authInitialized=true;toggleSignedIn(true);$('dntm-cloud-user-email').textContent=session.user.email||session.user.user_metadata?.display_name||'Tài khoản Google';
    setSignedMessage('Tài khoản đã kết nối. Tiến trình sẽ tự đồng bộ sau các lần lưu trong game.','success');
-  }catch(e){syncReady=false;toggleSignedIn(true);$('dntm-cloud-user-email').textContent=session?.user?.email||'Đã đăng nhập';showSyncStatus('Chưa đồng bộ được');setSignedMessage('Không thể đồng bộ: '+friendlyError(e)+'\n\nKiểm tra đã chạy SQL tạo bảng player_saves và bật chính sách RLS chưa.','error');}
+   setGateStatus('Đã xác thực tài khoản và kiểm tra bản lưu. Đang mở game…');unlockGame();
+  }catch(e){syncReady=false;toggleSignedIn(true);$('dntm-cloud-user-email').textContent=session?.user?.email||'Đã đăng nhập';showSyncStatus('Chưa đồng bộ được');setSignedMessage('Không thể đồng bộ: '+friendlyError(e)+'\n\nKiểm tra đã chạy SQL tạo bảng player_saves và bật chính sách RLS chưa. Sau khi sửa lỗi, nhấn Đồng bộ ngay để thử lại.','error');lockGame('Đã đăng nhập nhưng chưa tải/kiểm tra được bản lưu online. Game vẫn khóa để tránh tạo tiến trình sai. Mở Tài khoản và nhấn Đồng bộ ngay sau khi sửa lỗi.');openModal();}
   finally{reconciling=false;}
  }
  function scheduleSync(){if(!session?.user?.id||!syncReady||!client)return;if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(true),2200);}
- async function syncNow(silent){if(syncBusy||!session?.user?.id||!client){if(!silent)openModal();return;}syncBusy=true;try{const save=getCurrentSave();if(!save)throw new Error('Không tìm thấy bản lưu trên thiết bị.');await writeRemote(save);}catch(e){showSyncStatus('Đồng bộ thất bại');setSignedMessage('Lỗi đồng bộ: '+friendlyError(e)+'\n\nNếu chưa thiết lập bảng dữ liệu, hãy chạy file SQL đi kèm trong Supabase SQL Editor.','error');if(!silent)openModal();}finally{syncBusy=false;}}
+ async function syncNow(silent){if(syncBusy||!session?.user?.id||!client){if(!silent)openModal();return;}if(!syncReady){await reconcileCloud();return;}syncBusy=true;try{const save=getCurrentSave();if(!save)throw new Error('Không tìm thấy bản lưu trên thiết bị.');await writeRemote(save);}catch(e){showSyncStatus('Đồng bộ thất bại');setSignedMessage('Lỗi đồng bộ: '+friendlyError(e)+'\n\nNếu chưa thiết lập bảng dữ liệu, hãy chạy file SQL đi kèm trong Supabase SQL Editor.','error');if(!silent)openModal();}finally{syncBusy=false;}}
  async function signOut(){if(!client)return;try{await syncNow(true);}catch(_){}const {error}=await client.auth.signOut();if(error)setSignedMessage(friendlyError(error),'error');}
- async function onAuthChanged(nextSession){const previousId=session?.user?.id;session=nextSession;setAccountButton();if(session){toggleSignedIn(true);$('dntm-cloud-user-email').textContent=session.user.email||session.user.user_metadata?.display_name||'Tài khoản Google';if(!authInitialized||previousId!==session.user.id)await reconcileCloud();}else{syncReady=false;authInitialized=false;toggleSignedIn(false);}}
+ async function onAuthChanged(nextSession){const previousId=session?.user?.id;session=nextSession;setAccountButton();if(session){lockGame('Đã nhận tài khoản. Đang xác minh và tải tiến trình online…');toggleSignedIn(true);$('dntm-cloud-user-email').textContent=session.user.email||session.user.user_metadata?.display_name||'Tài khoản Google';if(!authInitialized||previousId!==session.user.id)await reconcileCloud();}else{syncReady=false;authInitialized=false;toggleSignedIn(false);lockGame('Vui lòng đăng nhập hoặc tạo tài khoản. Game chỉ tải tiến trình sau khi xác thực thành công.');openModal();}}
  function init(){
+  lockGame('Đang kiểm tra phiên đăng nhập…');
   const backdrop=$('dntm-cloud-backdrop');backdrop?.addEventListener('click',e=>{if(e.target===backdrop)closeModal();});
-  if(!window.supabase?.createClient){setMessage('Không tải được thư viện Supabase. Cần kết nối internet để dùng tài khoản online.','error');return;}
+  if(!window.supabase?.createClient){setMessage('Không tải được thư viện Supabase. Hãy kiểm tra kết nối internet rồi tải lại game.','error');setGateStatus('Không tải được thư viện đăng nhập. Hãy kiểm tra internet và tải lại trang.');openModal();return;}
   try{client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});}catch(e){setMessage('Không khởi tạo được Supabase: '+e.message,'error');return;}
   client.auth.onAuthStateChange((event,nextSession)=>{session=nextSession;setAccountButton();if(event==='INITIAL_SESSION'){setTimeout(()=>onAuthChanged(nextSession),0);}else if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){setTimeout(()=>onAuthChanged(nextSession),0);}else if(event==='SIGNED_OUT'){setTimeout(()=>onAuthChanged(null),0);}});
-  client.auth.getSession().then(({data,error})=>{if(error){setMessage(friendlyError(error),'error');return;}if(!authInitialized)onAuthChanged(data.session);}).catch(e=>setMessage(friendlyError(e),'error'));
+  client.auth.getSession().then(({data,error})=>{if(error){setMessage(friendlyError(error),'error');setGateStatus('Không xác minh được phiên đăng nhập. Vui lòng thử lại.');openModal();return;}if(!authInitialized)onAuthChanged(data.session);}).catch(e=>{setMessage(friendlyError(e),'error');setGateStatus('Không kết nối được máy chủ tài khoản. Hãy kiểm tra mạng rồi tải lại.');openModal();});
   // Hook the existing local-save pipeline; local saves remain primary and online sync is debounced.
   const originalSave=window.saveRecruitmentState;
   if(typeof originalSave==='function'&&!originalSave.__dntmCloudWrapped){
